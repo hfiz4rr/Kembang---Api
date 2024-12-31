@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fireworks with Love Explosion</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+    }
+    canvas {
+      display: block;
+    }
+
+    /* Animasi teks utama */
+    .love-text {
+      position: absolute;
+      font-family: 'Caveat', cursive;
+      pointer-events: none;
+      text-align: center;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .love-text h1, .love-text h2, .love-text h3 {
+      margin: 0;
+      font-size: 3rem;
+      opacity: 0;
+      transform: scale(0.8);
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+    }
+
+    .love-text h1 {
+      color: #ff69b4; /* Pink */
+      animation: textAnimation 1s ease-out forwards 0s;
+    }
+
+    .love-text h2 {
+      color: #ff69b4; /* Pink */
+      animation: textAnimation 1s ease-out forwards 0.5s;
+    }
+
+    .love-text h3 {
+      color: #9370db; /* Ungu */
+      animation: textAnimation 1s ease-out forwards 1s;
+    }
+
+    @keyframes textAnimation {
+      0% {
+        opacity: 0;
+        transform: scale(0.8) translateY(20px);
+      }
+      50% {
+        opacity: 0.8;
+        transform: scale(1.1) translateY(-10px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
+</head>
+<body>
+<canvas id="fireworks"></canvas>
+
+<script>
+  const canvas = document.getElementById("fireworks");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const colors = ["#ff69b4", "#ff004d", "#9370db", "#ff85b3"];
+
+  class Particle {
+    constructor(x, y, size, life, color, angle, speed) {
+      this.x = x;
+      this.y = y;
+      this.size = size;
+      this.life = life;
+      this.remainingLife = life;
+      this.color = color;
+      this.alpha = 1;
+      this.angle = angle;
+      this.speed = speed;
+    }
+
+    update() {
+      this.x += Math.cos(this.angle) * this.speed;
+      this.y += Math.sin(this.angle) * this.speed;
+      this.remainingLife--;
+      this.alpha = Math.max(this.remainingLife / this.life, 0);
+    }
+
+    draw() {
+      if (this.alpha <= 0) return;
+      ctx.globalAlpha = this.alpha;
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  class Firework {
+    constructor(startX, startY, targetX, targetY, color) {
+      this.x = startX;
+      this.y = startY;
+      this.targetX = targetX;
+      this.targetY = targetY;
+      this.color = color;
+      this.speed = 6;
+      this.exploded = false;
+      this.particles = [];
+    }
+
+    update() {
+      if (!this.exploded) {
+        const dx = this.targetX - this.x;
+        const dy = this.targetY - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < this.speed) {
+          this.exploded = true;
+          this.createHeartParticles();
+          displayLoveText();
+        } else {
+          this.x += (dx / distance) * this.speed;
+          this.y += (dy / distance) * this.speed;
+        }
+      } else {
+        this.particles = this.particles.filter((particle) => particle.alpha > 0);
+        this.particles.forEach((particle) => particle.update());
+      }
+    }
+
+    draw() {
+      if (!this.exploded) {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        this.particles.forEach((particle) => particle.draw());
+      }
+    }
+
+    createHeartParticles() {
+      const numParticles = 200;
+      const radius = 100;
+
+      for (let i = 0; i < numParticles; i++) {
+        const t = Math.random() * Math.PI * 2;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 2 + 1;
+        const size = Math.random() * 1.5 + 1;
+        const life = Math.random() * 60 + 80;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+
+        const x = this.targetX + radius * Math.sin(t) ** 3;
+        const y = this.targetY - radius * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) / 16;
+
+        this.particles.push(new Particle(x, y, size, life, color, angle, speed));
+      }
+    }
+
+    isComplete() {
+      return this.exploded && this.particles.length === 0;
+    }
+  }
+
+  const fireworks = [];
+
+  function createFirework(x, y) {
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const startX = x;
+    const startY = canvas.height;
+    const targetX = x;
+    const targetY = y;
+    fireworks.push(new Firework(startX, startY, targetX, targetY, color));
+  }
+
+  function animate() {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    fireworks.forEach((firework, index) => {
+      firework.update();
+      firework.draw();
+      if (firework.isComplete()) {
+        fireworks.splice(index, 1);
+      }
+    });
+
+    requestAnimationFrame(animate);
+  }
+
+  function displayLoveText() {
+    const loveTextElement = document.createElement("div");
+    loveTextElement.classList.add("love-text");
+    loveTextElement.innerHTML = `
+      <h1>Happy</h1>
+      <h2>New Year</h2>
+      <h3>Jessy</h3>
+    `;
+    document.body.appendChild(loveTextElement);
+
+    setTimeout(() => {
+      loveTextElement.remove();
+    }, 3000); // Sesuai durasi animasi
+  }
+
+  // Resize canvas dynamically
+  window.addEventListener("resize", () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+
+  // Trigger fireworks on click
+  canvas.addEventListener("click", (e) => {
+    createFirework(e.clientX, e.clientY - 150);
+  });
+
+  animate();
+</script>
+</body>
+</html>
